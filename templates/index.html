@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tree Visualization</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <h1>Tree Visualization</h1>
+    
+    <form id="build-tree-form">
+        <input type="text" name="values" placeholder="Enter values separated by commas (e.g., 10,5,15)">
+        <button type="submit">Build Tree</button>
+    </form>
+
+    <div id="tree-container"></div>
+
+    <button onclick="fetchTraversal('inorder')">Inorder Traversal</button>
+    <div id="traversal-result"></div>
+
+    <script>
+        // Build the tree from user input
+        document.getElementById("build-tree-form").addEventListener("submit", function(e) {
+            e.preventDefault();
+            const values = this.values.value.split(",").map(v => v.trim());
+
+            fetch("/build-tree/", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ values }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                fetchAndRenderTree();  // Fetch and render the tree after building
+            });
+        });
+
+        // Fetch and render the complete tree structure
+        function fetchAndRenderTree() {
+            fetch("/get-tree/")
+                .then(response => response.json())
+                .then(data => {
+                    renderTree(data);
+                });
+        }
+
+        // Render the tree using D3.js
+        function renderTree(treeData) {
+            const width = 800;
+            const height = 400;
+            const treeContainer = document.getElementById("tree-container");
+            treeContainer.innerHTML = "";  // Clear the container
+
+            const svg = d3.select(treeContainer)
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height);
+
+            const treeLayout = d3.tree().size([width, height - 100]);
+            const root = d3.hierarchy(treeData);
+
+            const links = treeLayout(root).links();
+            const nodes = root.descendants();
+
+            // Draw links
+            svg.selectAll("line")
+                .data(links)
+                .enter()
+                .append("line")
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y)
+                .style("stroke", "black");
+
+            // Draw nodes
+            svg.selectAll("circle")
+                .data(nodes)
+                .enter()
+                .append("circle")
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y)
+                .attr("r", 20)
+                .style("fill", "steelblue");
+
+            // Add labels
+            svg.selectAll("text")
+                .data(nodes)
+                .enter()
+                .append("text")
+                .attr("x", d => d.x)
+                .attr("y", d => d.y - 25)
+                .text(d => d.data.value)
+                .style("text-anchor", "middle");
+        }
+
+        // Fetch traversal results
+        function fetchTraversal(order) {
+            fetch(`/traverse/?order=${order}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("traversal-result").innerText = `${order} Traversal: ${data.order}`;
+                });
+        }
+    </script>
+</body>
+</html>
